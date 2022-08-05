@@ -38,6 +38,13 @@ class OpenApi extends Base
      */
     public Paths $paths;
 
+    // ToDo: webhooks,components,security,tags
+
+    /**
+     * @var ExternalDocumentation|null Additional external documentation.
+     */
+    public ?ExternalDocumentation $externalDocs;
+
     /**
      * @param string $openApi This string MUST be the semantic version number of the OpenAPI Specification version that the OpenAPI document uses.
      *                        The openapi field SHOULD be used by tooling specifications and clients to interpret the OpenAPI document. This is not

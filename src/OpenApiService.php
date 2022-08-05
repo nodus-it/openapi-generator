@@ -18,7 +18,7 @@ use Symfony\Component\Yaml\Yaml;
 
 class OpenApiService
 {
-    public const OPENAPI_VERSION = '3.1.0';
+    public const OPENAPI_VERSION = '3.0.0';
 
     /**
      * Returns openapi specification in yaml
@@ -68,7 +68,7 @@ class OpenApiService
             config('openapi-generator.fields.info.title', config('app.name')),
             config('openapi-generator.fields.info.version', $this->getComposer('version')),
         );
-        $info->description = config('openapi-generator.fields.info.description');
+        $info->description = config('openapi-generator.fields.info.description', $this->getComposer('description'));
         $info->termsOfService = config('openapi-generator.fields.info.termsOfService');
         $info->contact = $this->generateContact();
         $info->license = $this->generateLicence();
@@ -83,29 +83,24 @@ class OpenApiService
      */
     protected function generateContact(): Contact|null
     {
-        if (config('openapi-generator.fields.info.contact') !== null) {
-            return new Contact(
-                config('openapi-generator.fields.info.contact.name'),
-                config('openapi-generator.fields.info.contact.url'),
-                config('openapi-generator.fields.info.contact.email'),
-            );
-        } elseif (!empty($this->getComposer('authors'))) {
-            return new Contact(
-                $this->getComposer('authors')[ 0 ]->name ?? null,
-                $this->getComposer('authors')[ 0 ]->homepage ?? null,
-                $this->getComposer('authors')[ 0 ]->email ?? null,
-            );
-        } else {
-            return null;
-        }
+        return new Contact(
+            $this->getComposer('authors')[0]->name ?? null,
+            $this->getComposer('authors')[0]->homepage ?? null,
+            $this->getComposer('authors')[0]->email ?? null,
+        );
     }
 
+    /**
+     * Generate the pahts, based on laravel routes
+     *
+     * @return Paths
+     */
     protected function generatePaths()
     {
         $paths = [];
         foreach ($this->getRoutes() as $route) {
             $path = Str::replace(config('openapi-generator.routes.prefix'), '', Str::start($route->uri(), '/'));
-            $paths[ $path ] = array_merge($paths[ $path ] ?? [], $this->generatePath($route));
+            $paths[$path] = array_merge($paths[$path] ?? [], $this->generatePath($route));
         }
 
         return new Paths($paths);
@@ -114,32 +109,31 @@ class OpenApiService
 
     protected function generatePath(\Illuminate\Routing\Route $route)
     {
-        $uri = $route->uri();
-        if (config('openapi-generator.routes.prefix') !== null) {
-            $uri = Str::replace(config('openapi-generator.routes.prefix'), '', $uri);
-        }
-
         $ref = new ReflectionClass($route->getControllerClass());
         $doc = $this->parseDocBlock($ref->getMethod($route->getActionMethod())->getDocComment());
 
         $path = [];
         foreach ($route->methods() as $method) {
             if (in_array($method, config('openapi-generator.routes.methods', []))) {
-                $operationObject = new Operation($this->generateResponses($route));
-                $operationObject->tags = [explode('/', $route->uri())[ 2 ]];
-                $operationObject->summary = 'xx'; // ToDo
-                $operationObject->description = $doc[ 'desc' ];
-                $operationObject->operationId = $route->getName() ?? md5(implode(',', $route->methods()) . $route->uri());
-                $operationObject->parameters = $this->generateParameters($route);
+                if (method_exists($this, 'generatePathFor' . Str::ucfirst($method))) {
+                    $operationObject = $this->{'generatePathFor' . Str::ucfirst($method)}($route, $method, $doc);
+                } else {
+                    $operationObject = new Operation($this->generateResponses($route));
+                    $operationObject->tags = [explode('/', $route->uri())[2]];
+                    $operationObject->summary = $this->getTranslationForRouteSummary($route, $method);
+                    $operationObject->description = $this->getTranslationForRouteSummary($route, $method);
+                    $operationObject->operationId = $route->getName() ?? md5(implode(',', $route->methods()) . $route->uri());
+                    $operationObject->parameters = $this->generateParameters($route);
+                }
 
-                $path[ Str::lower($method) ] = $operationObject;
+                $path[Str::lower($method)] = $operationObject;
             }
         }
 
         return $path;
     }
 
-    private function generateParameters(\Illuminate\Routing\Route $route)
+    protected function generateParameters(\Illuminate\Routing\Route $route)
     {
         $parameters = [];
         foreach ($route->parameterNames() as $parameterName) {
@@ -196,14 +190,14 @@ class OpenApiService
     {
         if (preg_match_all('/\* @([a-z-]+) ([A-Za-z $.,]+)/', $string, $matches, PREG_SET_ORDER) !== false) {
             foreach ($matches as $match) {
-                $tags[ $match[ 1 ] ][] = $match[ 2 ];
+                $tags[$match[1]][] = $match[2];
             }
         }
 
         if (preg_match_all('/\* ([a-zA-ZäöüÄÖÜ\-_ ,.]+)/', $string, $matches, PREG_SET_ORDER) !== false) {
             $desc = '';
             foreach ($matches as $match) {
-                $desc .= $match[ 1 ];
+                $desc .= $match[1];
             }
         }
 
@@ -220,7 +214,7 @@ class OpenApiService
             /**
              * Exclude Closure Routes
              */
-            if ($route->action[ 'uses' ] instanceof Closure) {
+            if ($route->action['uses'] instanceof Closure) {
                 continue;
             }
 
@@ -240,7 +234,7 @@ class OpenApiService
         return $routes;
     }
 
-    private function generateResponses(\Illuminate\Routing\Route $route)
+    protected function generateResponses(\Illuminate\Routing\Route $route)
     {
         $responses = new Responses();
         $responses->{200} = [
@@ -261,6 +255,29 @@ class OpenApiService
         }
 
         return $responses;
+    }
+
+
+    protected function getTranslationForRouteSummary(\Illuminate\Routing\Route $route, string $method)
+    {
+        return $this->getTranslationForRoute($route, $method, 'summary');
+    }
+
+    protected function getTranslationForRouteDescription(\Illuminate\Routing\Route $route, string $method)
+    {
+        return $this->getTranslationForRoute($route, $method, 'description');
+    }
+
+    protected function getTranslationForRoute(\Illuminate\Routing\Route $route, string $method, string $suffix)
+    {
+        $prefix = config('openapi-generator.translation.prefix', 'routes') . '.';
+        $translationString = $route->getName() . '.' . Str::lower($method);
+        $translation = trans($prefix . $translationString . '.' . $suffix);
+        if ($translation == $prefix . $translationString . '.' . $suffix) {
+            return $translationString;
+        }
+
+        return $translation;
     }
 
 }

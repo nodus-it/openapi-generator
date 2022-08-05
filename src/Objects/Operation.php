@@ -28,7 +28,7 @@ class Operation extends Base
     /**
      * @var ExternalDocumentation Additional external documentation for this operation.
      */
-    // public ExternalDocumentation $externalDocumentation; ToDo
+    public ExternalDocumentation $externalDocumentation;
 
     /**
      * @var string|null Unique string used to identify the operation. The id MUST be unique among all operations described in the API. The
@@ -38,7 +38,7 @@ class Operation extends Base
     public ?string $operationId;
 
     /**
-     * @var array|null A list of parameters that are applicable for this operation. If a parameter is already defined at the Path Item, the new
+     * @var array[Parameter]|Reference|null A list of parameters that are applicable for this operation. If a parameter is already defined at the Path Item, the new
      *      definition will override it but can never remove it. The list MUST NOT include duplicated parameters. A unique parameter is defined by a
      *      combination of a name and location. The list can use the Reference Object to link to parameters that are defined at the OpenAPI Object's
      *      components/parameters.
@@ -46,11 +46,11 @@ class Operation extends Base
     public ?array $parameters;
 
     /**
-     * @var RequestBody|Reference The request body applicable for this operation. The requestBody is only supported in HTTP methods where the HTTP
+     * @var RequestBody|Reference|null The request body applicable for this operation. The requestBody is only supported in HTTP methods where the HTTP
      *      1.1 specification RFC7231 has explicitly defined semantics for request bodies. In other cases where the HTTP spec is vague, requestBody
      *      SHALL be ignored by consumers.
      */
-    public RequestBody|Reference $requestBody;
+    public RequestBody|Reference|null $requestBody;
 
     /**
      * @var Responses The list of possible responses as they are returned from executing this operation.
@@ -58,11 +58,11 @@ class Operation extends Base
     public Responses $responses;
 
     /**
-     * @var Callback|Reference A map of possible out-of band callbacks related to the parent operation. The key is a unique identifier for the
+     * @var array[Callback|Reference] A map of possible out-of band callbacks related to the parent operation. The key is a unique identifier for the
      *      Callback Object. Each value in the map is a Callback Object that describes a request that may be initiated by the API provider and the
      *      expected responses.
      */
-    //public Callback|Reference $callbacks; ToDo
+    public ?array $callbacks;
 
     /**
      * @var bool Declares this operation to be deprecated. Consumers SHOULD refrain from usage of the declared operation. Default value is false.
@@ -75,7 +75,7 @@ class Operation extends Base
      *      a request. To make security optional, an empty security requirement ({}) can be included in the array. This definition overrides any
      *      declared top-level security. To remove a top-level security declaration, an empty array can be used.
      */
-    // public ?SecurityRequirement $security; ToDo
+    public ?SecurityRequirement $security;
 
     /**
      * @var array<Server> An alternative server array to service all operations in this path.

@@ -19,9 +19,9 @@ class Server extends Base
     public ?string $description;
 
     /**
-     * @var ServerVariable|null A map between a variable name and its value. The value is used for substitution in the server's URL template.
+     * @var array[Server Variable]|null A map between a variable name and its value. The value is used for substitution in the server's URL template.
      */
-    //public ?ServerVariable $serverVariable; ToDO
+    public ?array $variables;
 
     /**
      * Erzeugt eine Instanz des Server Objektes
