@@ -45,7 +45,7 @@ class OpenApiService
      *
      * @return OpenApi
      */
-    private function generate(): OpenApi
+    protected function generate(): OpenApi
     {
         $openApi = new OpenApi(
             self::OPENAPI_VERSION,
