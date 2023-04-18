@@ -13,8 +13,8 @@
   ],
   "require": {
     "php": "^8.0 || ^8.1",
-    "symfony/yaml": "^6.1",
-    "laravel/framework": "^9.0"
+    "symfony/yaml": "^6.1 || ^6.2",
+    "laravel/framework": "^9 || ^10"
   },
   "autoload": {
     "psr-4": {
